@@ -42,7 +42,7 @@ function checkSrc(src,callback){
 
 }
 
-module.exports = function(src,dest,callback){
+module.exports = function(src,dest,background,callback){
 
       var dirPathArr = __dirname.split(path.sep);
 
@@ -50,7 +50,10 @@ module.exports = function(src,dest,callback){
       dirPathArr.pop();
       dirPathArr.push('jar');
       dirPathArr.push('pdfbox.jar');
-
+      if (typeof background === 'function') {
+        callback = background;
+        background = null;
+      }
       var jarPath = dirPathArr.join(path.sep);
 
       var command = [`java -jar "${jarPath}" PDFMerger`];
@@ -69,6 +72,23 @@ module.exports = function(src,dest,callback){
               if(err)
               return callback(err);
 
+              // sets the specified background
+              if (background) {
+                command = [`java -jar "${jarPath}" OverlayPDF`];
+                command.push(`"${dest}"`);              // input
+                command.push(`"${background}"`);        // background
+                command.push('-position background');
+                command.push(`"${dest}"`);              // output
+                var childOverlay = exec(command.join(' '),function(err,stdout,stderr){
+                  if(err)
+                  return callback(err);
+                  callback(null);
+                });
+                childOverlay.on('error', function(err) {
+                  return callback(`Overlay execution problem. ${err}`);
+                });
+                return;
+              }
               callback(null);
 
           });
