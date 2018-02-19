@@ -57,9 +57,32 @@ module.exports = function(src,dest,background,callback){
       var jarPath = dirPathArr.join(path.sep);
 
       var command = [`java -jar "${jarPath}" PDFMerger`];
+      
+      // sets the specified background
+      var runBackground = function(src) {
+        if (background) {
+          command = [`java -jar "${jarPath}" OverlayPDF`];
+          command.push(`"${src}"`);              // input
+          command.push(`"${background}"`);        // background
+          command.push('-position background');
+          command.push(`"${dest}"`);              // output
+          var childOverlay = exec(command.join(' '),function(err,stdout,stderr){
+            if(err)
+            return callback(err);
+            callback(null);
+          });
+          childOverlay.on('error', function(err) {
+            return callback(`Overlay execution problem. ${err}`);
+          });
+          return;
+        }
+      };
 
       checkSrc(src,function(err,norm_src){
 
+          if (err && src.length === 1 && background) {
+            return runBackground(src[0]);
+          }
           if(err)
           return callback(err);
 
@@ -72,22 +95,8 @@ module.exports = function(src,dest,background,callback){
               if(err)
               return callback(err);
 
-              // sets the specified background
               if (background) {
-                command = [`java -jar "${jarPath}" OverlayPDF`];
-                command.push(`"${dest}"`);              // input
-                command.push(`"${background}"`);        // background
-                command.push('-position background');
-                command.push(`"${dest}"`);              // output
-                var childOverlay = exec(command.join(' '),function(err,stdout,stderr){
-                  if(err)
-                  return callback(err);
-                  callback(null);
-                });
-                childOverlay.on('error', function(err) {
-                  return callback(`Overlay execution problem. ${err}`);
-                });
-                return;
+                return runBackground(dest);
               }
               callback(null);
 
